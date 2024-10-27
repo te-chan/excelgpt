@@ -1,0 +1,31 @@
+name: Build and Commit
+
+on:
+  push:
+    branches:
+      - deploy
+    paths-ignore:
+      - 'build/**'  # ビルド結果のディレクトリを指定
+
+jobs:
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v3
+
+      - name: Node.jsをセットアップ
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'  # 必要に応じてNode.jsのバージョンを変更
+
+      - name: 依存関係をインストール
+        run: npm install
+
+      - name: プロジェクトをビルド
+        run: npm run build
+
+      - name: 変更をコミットしてプッシュ
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "build"
+          branch: deployment
+          file_pattern: '.'
