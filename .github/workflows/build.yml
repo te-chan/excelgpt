@@ -8,6 +8,7 @@ on:
       - 'build/**'  # ビルド結果のディレクトリを指定
 
 jobs:
+  build:
     steps:
       - name: repository checkout
         uses: actions/checkout@v3
