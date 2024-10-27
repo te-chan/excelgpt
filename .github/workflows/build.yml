@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - deploy
-    paths-ignore:
-      - 'build/**'  # ビルド結果のディレクトリを指定
+    workflow_dispatch:
 
 jobs:
   build:
+    runs-on: ubuntu-latest
     steps:
       - name: repository checkout
         uses: actions/checkout@v3
