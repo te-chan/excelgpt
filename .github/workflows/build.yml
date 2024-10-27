@@ -9,21 +9,21 @@ on:
 
 jobs:
     steps:
-      - name: リポジトリをチェックアウト
+      - name: repository checkout
         uses: actions/checkout@v3
 
-      - name: Node.jsをセットアップ
+      - name: setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'  # 必要に応じてNode.jsのバージョンを変更
 
-      - name: 依存関係をインストール
+      - name: install dependencies
         run: npm install
 
-      - name: プロジェクトをビルド
+      - name: build
         run: npm run build
 
-      - name: 変更をコミットしてプッシュ
+      - name: commit
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "build"
