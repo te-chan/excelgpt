@@ -25,9 +25,9 @@ export default function Component() {
   const [functionNameError, setFunctionNameError] = useState('')
 
   const generateVBAScript = () => {
-    let sanitizedFunctionName = sanitizeVBA(functionName);
-    let sanitizedSystemPrompt = sanitizeVBA(systemPrompt);
-    let sanitizedApiKey = sanitizeVBA(apiKey);
+    const sanitizedFunctionName = sanitizeVBA(functionName);
+    const sanitizedSystemPrompt = sanitizeVBA(systemPrompt);
+    const sanitizedApiKey = sanitizeVBA(apiKey);
 
     const script = `
 
