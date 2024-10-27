@@ -2,7 +2,7 @@ name: Build and Commit
 on:
   push:
     branches:
-      - deploy
+      - main
     workflow_dispatch:
 jobs:
   build:
@@ -22,5 +22,5 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "build"
-          branch: deploy
+          branch: main
           file_pattern: '.'
