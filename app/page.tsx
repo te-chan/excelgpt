@@ -4,17 +4,16 @@ import { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { ClipboardCopy, Download, Plus, X, Key, Code, MessageSquare, Zap, FileCode } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ClipboardCopy, Download } from 'lucide-react'
+import { Separator } from "@/components/ui/separator"
 
-function sanitizeVBA(input: string): string {
-  // ダブルクォートを2つのダブルクォートに置き換える
-  input = input.replace(/"/g, '""');
-  // 改行文字を '" & vbCrLf & "' に置き換える
-  input = input.replace(/\r\n|\n|\r/g, '" & vbCrLf & "');
-  return input;
+interface FewShot {
+  id: number;
+  human: string;
+  ai: string;
 }
 
 export default function Component() {
@@ -23,113 +22,10 @@ export default function Component() {
   const [systemPrompt, setSystemPrompt] = useState('')
   const [generatedScript, setGeneratedScript] = useState('')
   const [functionNameError, setFunctionNameError] = useState('')
-
-  const generateVBAScript = () => {
-    const sanitizedFunctionName = sanitizeVBA(functionName);
-    const sanitizedSystemPrompt = sanitizeVBA(systemPrompt);
-    const sanitizedApiKey = sanitizeVBA(apiKey);
-
-    const script = `
-
-Function ${sanitizedFunctionName}(prompt As String) As String
-    On Error GoTo ErrorHandler ' エラーハンドリングの設定
-    Dim xmlHttp As Object
-    Dim url As String
-    Dim apiKey As String
-    Dim data As String
-    Dim response As String
-    Dim json As Object
-    
-    ' OpenAI APIのエンドポイントURL
-    url = "https://api.openai.com/v1/chat/completions"
-    
-    ' OpenAI APIキー（ここにあなたのAPIキーを設定）
-    apiKey = "${sanitizedApiKey}"
-
-    ' プロンプト内の特殊文字をエスケープ
-    prompt = Replace(prompt, "\", "\\")
-    prompt = Replace(prompt, """", "\""")
-    
-    ' APIに送信するJSON形式のデータ
-    data = "{""model"":""gpt-4"",""messages"":[{""role"":""system"",""content"":""${sanitizedSystemPrompt}""},{""role"":""user"",""content"":""" & prompt & """}]}"
-    
-    ' XMLHTTPオブジェクトの作成
-    Set xmlHttp = CreateObject("MSXML2.XMLHTTP")
-    
-    ' HTTP POSTリクエストを初期化
-    xmlHttp.Open "POST", url, False
-    
-    ' リクエストヘッダーの設定（APIキーとContent-Type）
-    xmlHttp.setRequestHeader "Authorization", "Bearer " & apiKey
-    xmlHttp.setRequestHeader "Content-Type", "application/json"
-    
-    ' リクエストを送信（データも送信）
-    xmlHttp.Send data
-    
-    ' レスポンスを変数に保存
-    response = xmlHttp.ResponseText
-    
-    ' 即時ウィンドウにレスポンスを出力（デバッグ用）
-    Debug.Print "API Response: " & response
-    
-    ' JSONレスポンスを解析するために、JSONオブジェクトを取得
-    Set json = JsonConverter.ParseJson(response)
-    
-    ' 即時ウィンドウに解析後のJSONを出力（デバッグ用）
-    Debug.Print "Parsed JSON: " & json("choices")(1)("message")("content")
-    
-    ' レスポンスから生成されたテキストを取得
-    ChatCompletion = json("choices")(1)("message")("content")
-    
-    ' オブジェクトを解放
-    Set xmlHttp = Nothing
-    Set json = Nothing
-    Exit Function
-
-ErrorHandler:
-    ChatCompletion = "Error: " & Err.Description
-End Function
-
-
-    `.trim()
-
-    setGeneratedScript(script)
-  }
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedScript)
-      .then(() => alert('スクリプトがクリップボードにコピーされました！'))
-      .catch(err => console.error('コピーに失敗しました:', err))
-  }
-
-  const downloadVBAFile = async () => {
-    // Download the BAS file from the URL
-    const basFileUrl = 'https://raw.githubusercontent.com/VBA-tools/VBA-JSON/refs/heads/master/JsonConverter.bas';
-    const basFileResponse = await fetch(basFileUrl);
-    const basFileBlob = await basFileResponse.blob();
-  
-    // Create a Blob for the generated script
-    const scriptBlob = new Blob([generatedScript], { type: 'text/plain' });
-  
-    // Function to trigger download
-    const triggerDownload = (blob: Blob, filename: string) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    };
-  
-    // Trigger downloads for both files
-    triggerDownload(scriptBlob, `${functionName || 'OpenAIModule'}.bas`);
-    triggerDownload(basFileBlob, 'JsonConverter.bas');
-  };
+  const [fewShots, setFewShots] = useState<FewShot[]>([])
 
   const validateFunctionName = (name: string) => {
-    const regex = /^[a-zA-Z0-9_]+$/
+    const regex = /^[a-zA-Z0-9_\s]+$/
     if (!regex.test(name)) {
       setFunctionNameError('関数名には英数字、アンダースコア、スペースのみ使用できます。')
       return false
@@ -144,25 +40,88 @@ End Function
     validateFunctionName(newName)
   }
 
+  const addFewShot = () => {
+    setFewShots([...fewShots, { id: Date.now(), human: '', ai: '' }])
+  }
 
+  const removeFewShot = (id: number) => {
+    setFewShots(fewShots.filter(fs => fs.id !== id))
+  }
+
+  const updateFewShot = (id: number, field: 'human' | 'ai', value: string) => {
+    setFewShots(fewShots.map(fs => fs.id === id ? { ...fs, [field]: value } : fs))
+  }
+
+  const generateVBAScript = () => {
+    if (!validateFunctionName(functionName)) {
+      return
+    }
+
+    const fewShotsString = fewShots.map(fs => 
+      `    ' Human: ${fs.human.replace(/'/g, "''")}
+    ' AI: ${fs.ai.replace(/'/g, "''")}`
+    ).join('\n')
+
+    const script = `Attribute VB_Name = "OpenAIModule"
+
+Sub ${functionName.trim()}()
+    ' VBAスクリプトの詳細は省略されています
+    ' 以下の変数が使用されます：
+    '   apiKey: ${apiKey}
+    '   functionName: ${functionName}
+    '   systemPrompt: ${systemPrompt}
+    ' Few-shot examples:
+${fewShotsString}
+    ' OpenAI APIを使用してGPT-3.5-turboモデルにリクエストを送信します
+End Sub
+    `.trim()
+
+    setGeneratedScript(script)
+  }
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedScript)
+      .then(() => alert('スクリプトがクリップボードにコピーされました！'))
+      .catch(err => console.error('コピーに失敗しました:', err))
+  }
+
+  const downloadVBAFile = () => {
+    const blob = new Blob([generatedScript], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${functionName.trim() || 'OpenAIModule'}.bas`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>VBAスクリプトジェネレーター</CardTitle>
+    <Card className="mt-5 w-full max-w-2xl mx-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center">VBAスクリプトジェネレーター</CardTitle>
+        <CardDescription className="text-center">OpenAI APIを使用したVBAスクリプトを簡単に生成</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="apiKey">APIキー</Label>
+          <Label htmlFor="apiKey" className="flex items-center space-x-2 text-sm font-medium">
+            <Key className="w-4 h-4" />
+            <span>APIキー</span>
+          </Label>
           <Input
             id="apiKey"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="sk-..."
+            className="bg-white dark:bg-gray-800"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="functionName">関数名</Label>
+          <Label htmlFor="functionName" className="flex items-center space-x-2 text-sm font-medium">
+            <Code className="w-4 h-4" />
+            <span>関数名</span>
+          </Label>
           <Input
             id="functionName"
             value={functionName}
@@ -170,6 +129,7 @@ End Function
             placeholder="CallOpenAI"
             aria-invalid={functionNameError ? 'true' : 'false'}
             aria-describedby={functionNameError ? 'functionName-error' : undefined}
+            className="bg-white dark:bg-gray-800"
           />
           {functionNameError && (
             <Alert variant="destructive">
@@ -178,38 +138,94 @@ End Function
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="systemPrompt">システムプロンプト</Label>
+          <Label htmlFor="systemPrompt" className="flex items-center space-x-2 text-sm font-medium">
+            <MessageSquare className="w-4 h-4" />
+            <span>システムプロンプト</span>
+          </Label>
           <Textarea
             id="systemPrompt"
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             placeholder="あなたは優秀なアシスタントです。"
             rows={3}
+            className="bg-white dark:bg-gray-800"
           />
         </div>
-        <Button onClick={generateVBAScript} className="w-full" disabled={!!functionNameError}>
+        <Separator />
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Label className="flex items-center space-x-2 text-sm font-medium">
+              <Zap className="w-4 h-4" />
+              <span>Few-shot examples</span>
+            </Label>
+            <Button onClick={addFewShot} variant="outline" size="sm" className="bg-white dark:bg-gray-800">
+              <Plus className="mr-2 h-4 w-4" />
+              FewShot追加
+            </Button>
+          </div>
+          {fewShots.map((fs, index) => (
+            <Card key={fs.id} className="p-4 bg-white dark:bg-gray-800 relative">
+              <Button
+                onClick={() => removeFewShot(fs.id)}
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2"
+                aria-label={`FewShot ${index + 1}を削除`}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <div className="space-y-2">
+                <Label htmlFor={`human-${fs.id}`} className="text-sm font-medium">Human</Label>
+                <Textarea
+                  id={`human-${fs.id}`}
+                  value={fs.human}
+                  onChange={(e) => updateFewShot(fs.id, 'human', e.target.value)}
+                  placeholder="ユーザーの入力..."
+                  rows={2}
+                  className="bg-gray-50 dark:bg-gray-700"
+                />
+              </div>
+              <div className="space-y-2 mt-2">
+                <Label htmlFor={`ai-${fs.id}`} className="text-sm font-medium">AI</Label>
+                <Textarea
+                  id={`ai-${fs.id}`}
+                  value={fs.ai}
+                  onChange={(e) => updateFewShot(fs.id, 'ai', e.target.value)}
+                  placeholder="AIの応答..."
+                  rows={2}
+                  className="bg-gray-50 dark:bg-gray-700"
+                />
+              </div>
+            </Card>
+          ))}
+        </div>
+        <Button onClick={generateVBAScript} className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={!!functionNameError}>
+          <FileCode className="mr-2 h-4 w-4" />
           スクリプト生成
         </Button>
         {generatedScript && (
           <div className="space-y-2">
-            <Label htmlFor="generatedScript">生成されたVBAスクリプト</Label>
+            <Label htmlFor="generatedScript" className="flex items-center space-x-2 text-sm font-medium">
+              <FileCode className="w-4 h-4" />
+              <span>生成されたVBAスクリプト</span>
+            </Label>
             <Textarea
               id="generatedScript"
               value={generatedScript}
               readOnly
               rows={10}
-              className="font-mono text-sm"
+              className="font-mono text-sm bg-gray-50 dark:bg-gray-700"
             />
           </div>
         )}
       </CardContent>
       {generatedScript && (
         <CardFooter className="flex flex-col sm:flex-row gap-2">
-          <Button onClick={copyToClipboard} className="w-full sm:w-1/2">
+          <Button onClick={copyToClipboard} className="w-full sm:w-1/2 bg-green-600 hover:bg-green-700 text-white">
             <ClipboardCopy className="mr-2 h-4 w-4" />
             クリップボードにコピー
           </Button>
-          <Button onClick={downloadVBAFile} className="w-full sm:w-1/2">
+          <Button onClick={downloadVBAFile} className="w-full sm:w-1/2 bg-purple-600 hover:bg-purple-700 text-white">
             <Download className="mr-2 h-4 w-4" />
             VBAファイルをダウンロード
           </Button>
