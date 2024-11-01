@@ -9,22 +9,33 @@ import { Label } from "@/components/ui/label"
 import { ClipboardCopy, Download, Plus, X, Key, Code, MessageSquare, Zap, FileCode } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
+import { generateOpenAI } from './generateVBA'
 
+// FewShotの型定義
 interface FewShot {
   id: number;
   human: string;
   ai: string;
 }
 
-export default function Component() {
-  const [apiKey, setApiKey] = useState('')
-  const [functionName, setFunctionName] = useState('')
-  const [systemPrompt, setSystemPrompt] = useState('')
-  const [generatedScript, setGeneratedScript] = useState('')
-  const [functionNameError, setFunctionNameError] = useState('')
+export interface GenerationOptions {
+  apiKey: string;
+  functionName: string;
+  systemPrompt: string;
+  fewShots: FewShot[];
+}
+
+export default function ScriptGenerator() {
+  // ステートの定義
+  const [apiKey, setApiKey] = useState<string>('')
+  const [functionName, setFunctionName] = useState<string>('')
+  const [systemPrompt, setSystemPrompt] = useState<string>('')
+  const [generatedScript, setGeneratedScript] = useState<string>('')
+  const [functionNameError, setFunctionNameError] = useState<string>('')
   const [fewShots, setFewShots] = useState<FewShot[]>([])
 
-  const validateFunctionName = (name: string) => {
+  // 関数名のバリデーション
+  const validateFunctionName = (name: string): boolean => {
     const regex = /^[a-zA-Z0-9_\s]+$/
     if (!regex.test(name)) {
       setFunctionNameError('関数名には英数字、アンダースコア、スペースのみ使用できます。')
@@ -34,57 +45,51 @@ export default function Component() {
     return true
   }
 
+  // 関数名の変更処理
   const handleFunctionNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value
     setFunctionName(newName)
     validateFunctionName(newName)
   }
 
+  // FewShotの追加
   const addFewShot = () => {
     setFewShots([...fewShots, { id: Date.now(), human: '', ai: '' }])
   }
 
+  // FewShotの削除
   const removeFewShot = (id: number) => {
     setFewShots(fewShots.filter(fs => fs.id !== id))
   }
 
+  // FewShotの更新
   const updateFewShot = (id: number, field: 'human' | 'ai', value: string) => {
     setFewShots(fewShots.map(fs => fs.id === id ? { ...fs, [field]: value } : fs))
   }
 
+  // VBAスクリプトの生成
   const generateVBAScript = () => {
     if (!validateFunctionName(functionName)) {
       return
     }
 
-    const fewShotsString = fewShots.map(fs => 
-      `    ' Human: ${fs.human.replace(/'/g, "''")}
-    ' AI: ${fs.ai.replace(/'/g, "''")}`
-    ).join('\n')
-
-    const script = `Attribute VB_Name = "OpenAIModule"
-
-Sub ${functionName.trim()}()
-    ' VBAスクリプトの詳細は省略されています
-    ' 以下の変数が使用されます：
-    '   apiKey: ${apiKey}
-    '   functionName: ${functionName}
-    '   systemPrompt: ${systemPrompt}
-    ' Few-shot examples:
-${fewShotsString}
-    ' OpenAI APIを使用してGPT-3.5-turboモデルにリクエストを送信します
-End Sub
-    `.trim()
-
+    const script = generateOpenAI({
+      apiKey: apiKey,
+      functionName: functionName,
+      systemPrompt: systemPrompt,
+      fewShots: fewShots
+    })
     setGeneratedScript(script)
   }
 
+  // クリップボードにコピー
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedScript)
       .then(() => alert('スクリプトがクリップボードにコピーされました！'))
       .catch(err => console.error('コピーに失敗しました:', err))
   }
 
+  // VBAファイルのダウンロード
   const downloadVBAFile = () => {
     const blob = new Blob([generatedScript], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
@@ -104,6 +109,7 @@ End Sub
         <CardDescription className="text-center">OpenAI APIを使用したVBAスクリプトを簡単に生成</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* APIキー入力 */}
         <div className="space-y-2">
           <Label htmlFor="apiKey" className="flex items-center space-x-2 text-sm font-medium">
             <Key className="w-4 h-4" />
@@ -117,6 +123,7 @@ End Sub
             className="bg-white dark:bg-gray-800"
           />
         </div>
+        {/* 関数名入力 */}
         <div className="space-y-2">
           <Label htmlFor="functionName" className="flex items-center space-x-2 text-sm font-medium">
             <Code className="w-4 h-4" />
@@ -137,6 +144,7 @@ End Sub
             </Alert>
           )}
         </div>
+        {/* システムプロンプト入力 */}
         <div className="space-y-2">
           <Label htmlFor="systemPrompt" className="flex items-center space-x-2 text-sm font-medium">
             <MessageSquare className="w-4 h-4" />
@@ -152,6 +160,7 @@ End Sub
           />
         </div>
         <Separator />
+        {/* Few-shot examplesセクション */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <Label className="flex items-center space-x-2 text-sm font-medium">
@@ -199,10 +208,12 @@ End Sub
             </Card>
           ))}
         </div>
+        {/* スクリプト生成ボタン */}
         <Button onClick={generateVBAScript} className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={!!functionNameError}>
           <FileCode className="mr-2 h-4 w-4" />
           スクリプト生成
         </Button>
+        {/* 生成されたスクリプト表示 */}
         {generatedScript && (
           <div className="space-y-2">
             <Label htmlFor="generatedScript" className="flex items-center space-x-2 text-sm font-medium">
@@ -219,6 +230,7 @@ End Sub
           </div>
         )}
       </CardContent>
+      {/* 生成されたスクリプトに対するアクションボタン */}
       {generatedScript && (
         <CardFooter className="flex flex-col sm:flex-row gap-2">
           <Button onClick={copyToClipboard} className="w-full sm:w-1/2 bg-green-600 hover:bg-green-700 text-white">
