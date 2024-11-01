@@ -7,10 +7,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ClipboardCopy, Download, Plus, X, Key, Code, MessageSquare, Zap, FileCode, Cloud, BrainCircuit, Router } from 'lucide-react'
+import { ClipboardCopy, Download, Plus, X, Key, Code, MessageSquare, Zap, FileCode, Cloud } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { generateAzureOpenAI, generateOpenAI } from './generateVBA'
+import { aiProviders } from './providerConfig'
 
 // FewShotの型定義
 interface FewShot {
@@ -19,13 +20,17 @@ interface FewShot {
   ai: string;
 }
 
+export interface AzureAppendData{
+  azureDeployment: string;
+  azureEndpoint: string
+}
+
 export interface GenerationOptions {
   apiKey: string;
   functionName: string;
   systemPrompt: string;
   fewShots: FewShot[];
-  azureDeployment: string;
-  azureEndpoint: string;
+  appendedData?: null | AzureAppendData
 }
 
 type AIProvider = 'OpenAI' | 'Azure OpenAI';
@@ -39,9 +44,8 @@ export default function ScriptGenerator() {
   const [functionNameError, setFunctionNameError] = useState<string>('')
   const [fewShots, setFewShots] = useState<FewShot[]>([])
   const [aiProvider, setAIProvider] = useState<AIProvider>('OpenAI');
-  const [azureDeployment, setAzureDeployment] = useState<string>('');
-  const [azureEndpoint, setAzureEndpoint] = useState<string>('');
-  
+  const [providerAppendInfo, setProviderAppendInfo] = useState<Record<string, string>>({});
+
 
   // 関数名のバリデーション
   const validateFunctionName = (name: string): boolean => {
@@ -85,14 +89,17 @@ export default function ScriptGenerator() {
       apiKey: apiKey,
       functionName: functionName,
       systemPrompt: systemPrompt,
-      fewShots: fewShots,
-      azureDeployment: azureDeployment,
-      azureEndpoint: azureEndpoint
+      fewShots: fewShots
     };
-    if(aiProvider === "OpenAI"){
+    if (aiProvider === "OpenAI") {
       const script = generateOpenAI(options);
       setGeneratedScript(script)
-    }else{
+    } else {
+      options.appendedData = {
+        azureDeployment: providerAppendInfo.azureDeployment,
+        azureEndpoint: providerAppendInfo.azureEndpoint
+      };
+
       const script = generateAzureOpenAI(options);
       setGeneratedScript(script)
     }
@@ -117,6 +124,11 @@ export default function ScriptGenerator() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }
+
+  // 選択されたプロバイダの追加設定を取得
+  const selectedProviderConfig = aiProviders.find(
+    (provider) => provider.name === aiProvider
+  );
 
   return (
     <Card className="mt-5 w-full max-w-2xl mx-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
@@ -191,36 +203,21 @@ export default function ScriptGenerator() {
           />
         </div>
         {/* Azure OpenAI向けのEndpoint入力 */}
-        {aiProvider === "Azure OpenAI" && (<>
-          <div className="space-y-2">
-            <Label htmlFor="apiKey" className="flex items-center space-x-2 text-sm font-medium">
-              <BrainCircuit className="w-4 h-4" />
-              <span>デプロイ名</span>
+        {selectedProviderConfig?.inputs.map((input) => (
+          <div className="space-y-2" key={input.id}>
+            <Label htmlFor={input.id} className="flex items-center space-x-2 text-sm font-medium">
+              {input.icon}
+              <span>{input.label}</span>
             </Label>
             <Input
-              id="azureDeployment"
-              value={azureDeployment}
-              onChange={(e) => setAzureDeployment(e.target.value)}
-              placeholder="gpt-8-human"
+              id={input.id}
+              value={providerAppendInfo[input.id] || ''}
+              onChange={(e) => setProviderAppendInfo({ ...providerAppendInfo, [input.id]: e.target.value })}
+              placeholder={input.placeholder}
               className="bg-white dark:bg-gray-800"
             />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="apiKey" className="flex items-center space-x-2 text-sm font-medium">
-              <Router className="w-4 h-4" />
-              <span>APIエンドポイント</span>
-            </Label>
-            <Input
-              id="azureEndpoint"
-              value={azureEndpoint}
-              onChange={(e) => setAzureEndpoint(e.target.value)}
-              placeholder="https://deployment.azure.somewhere"
-              className="bg-white dark:bg-gray-800"
-            />
-          </div>
-        </>
-        )}
+        ))}
         <Separator />
         {/* Few-shot examplesセクション */}
         <div className="space-y-4">

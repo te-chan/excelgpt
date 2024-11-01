@@ -1,4 +1,4 @@
-import {GenerationOptions} from './page';
+import {AzureAppendData, GenerationOptions} from './page';
 
 interface APIRequest { 
     model?: string;
@@ -104,6 +104,7 @@ End Function
 
 export function generateAzureOpenAI(options: GenerationOptions){
     const apiKey = sanitizeAsVBAString(options.apiKey);
+    const azureData = options.appendedData as AzureAppendData;
 
     // construct ai messages
     const apiRequest: APIRequest = {
@@ -145,7 +146,7 @@ Function ${options.functionName}(prompt As String) As String
     Dim json As Object
     
     ' OpenAI APIのエンドポイントURL
-    url = "${options.azureEndpoint}/openai/deployments/${options.azureDeployment}/chat/completions?api-version=2024-02-15-preview"
+    url = "${azureData.azureEndpoint}/openai/deployments/${azureData.azureDeployment}/chat/completions?api-version=2024-02-15-preview"
     
     ' OpenAI APIキー（ここにあなたのAPIキーを設定）
     apiKey = "${apiKey}"
