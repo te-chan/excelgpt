@@ -34,4 +34,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-.sis-copilot/project-info.json
+vector_db
