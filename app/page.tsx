@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from "@/components/ui/button"
+import convert from 'iconv-lite';
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -114,7 +115,7 @@ export default function ScriptGenerator() {
 
   // VBAファイルのダウンロード
   const downloadVBAFile = () => {
-    const blob = new Blob([generatedScript], { type: 'text/plain' })
+    const blob = new Blob([convert.encode(generatedScript, 'SJIS')], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
